@@ -1,0 +1,15 @@
+import { Bookmark, Menu, Moon, Search, Settings, Sun, X } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { Brand } from './Brand'
+
+const nav = [['Compare', '/devops-vs-ai-devops'], ['Roadmap', '/roadmap'], ['Blogs', '/blogs'], ['Discussions', '/discussions'], ['Debates', '/debates'], ['Tools', '/tools'], ['Case Studies', '/case-studies'], ['Skills', '/skills'], ['Assessment', '/assessment'], ['Architecture', '/architecture']]
+const secondaryNav = [['Learning Path', '/learning-path'], ['Career', '/career'], ['Bookmarks', '/bookmarks'], ['Settings', '/settings']]
+
+interface HeaderProps { theme: 'light' | 'dark'; onToggleTheme: () => void }
+
+export function Header({ theme, onToggleTheme }: HeaderProps) {
+  const [open, setOpen] = useState(false)
+  const linkClass = ({ isActive }: { isActive: boolean }) => `text-sm font-semibold transition-colors hover:text-[var(--accent-dark)] ${isActive ? 'text-[var(--accent-dark)]' : 'text-[var(--muted)]'}`
+  return <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_92%,transparent)] backdrop-blur-xl"><div className="container-shell flex h-16 items-center justify-between gap-4"><Brand /><nav className="hidden items-center gap-5 xl:flex" aria-label="Primary navigation">{nav.map(([label, href]) => <NavLink key={href} className={linkClass} to={href}>{label}</NavLink>)}</nav><div className="flex items-center gap-1"><NavLink to="/search" className="grid h-10 w-10 place-items-center rounded-lg hover:bg-[var(--surface-soft)]" aria-label="Search"><Search size={19} /></NavLink><NavLink to="/bookmarks" className="hidden h-10 w-10 place-items-center rounded-lg hover:bg-[var(--surface-soft)] sm:grid" aria-label="Bookmarks"><Bookmark size={19} /></NavLink><NavLink to="/settings" className="hidden h-10 w-10 place-items-center rounded-lg hover:bg-[var(--surface-soft)] sm:grid" aria-label="Settings"><Settings size={19} /></NavLink><button className="grid h-10 w-10 place-items-center rounded-lg border-0 bg-transparent hover:bg-[var(--surface-soft)]" onClick={onToggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}>{theme === 'light' ? <Moon size={19} /> : <Sun size={19} />}</button><button className="grid h-10 w-10 place-items-center rounded-lg border-0 bg-transparent xl:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-navigation" aria-label="Toggle navigation">{open ? <X size={22} /> : <Menu size={22} />}</button></div></div>{open && <nav id="mobile-navigation" className="container-shell grid max-h-[calc(100vh-4rem)] grid-cols-2 gap-2 overflow-y-auto border-t border-[var(--line)] py-4 xl:hidden" aria-label="Mobile navigation">{[...nav, ...secondaryNav].map(([label, href]) => <NavLink key={href} onClick={() => setOpen(false)} className={({ isActive }) => `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[var(--surface-soft)] text-[var(--accent-dark)]' : 'text-[var(--muted)]'}`} to={href}>{label}</NavLink>)}</nav>}</header>
+}

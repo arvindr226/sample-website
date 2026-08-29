@@ -1,0 +1,26 @@
+import { ArrowDown, ArrowLeft, Check, CircleHelp, ThumbsDown, ThumbsUp, TriangleAlert } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { BookmarkButton } from '../components/BookmarkButton'
+import { DiscussOnGitHub } from '../components/DiscussOnGitHub'
+import { discussions } from '../data/discussions'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { readStorage, STORAGE_KEYS, writeStorage } from '../utils/storage'
+import NotFoundPage from './NotFoundPage'
+
+type Position = 'agree' | 'unsure' | 'disagree'
+
+export default function DiscussionDetailPage() {
+  const { slug } = useParams()
+  const item = discussions.find(entry => entry.slug === slug)
+  const [votes, setVotes] = useState(() => readStorage<Record<string, Position>>(STORAGE_KEYS.votes, {}))
+  usePageMeta(item?.title ?? 'Discussion not found', item?.description ?? 'This discussion topic could not be found.', false)
+  if (!item) return <NotFoundPage />
+  const position = votes[item.slug]
+  const choose = (next: Position) => { const updated = { ...votes, [item.slug]: next }; writeStorage(STORAGE_KEYS.votes, updated); setVotes(updated) }
+  return <main><header className="border-b border-[var(--line)] bg-[var(--surface)]"><div className="container-shell py-12 md:py-20"><Link to="/discussions" className="muted inline-flex items-center gap-2 text-sm font-bold"><ArrowLeft size={16} /> All discussions</Link><p className="eyebrow mt-8">{item.category} · {item.status}</p><h1 className="title-lg mt-4 max-w-4xl">{item.title}</h1><p className="muted mt-5 max-w-3xl text-lg leading-8">{item.description}</p><div className="mt-7 flex flex-wrap gap-3"><BookmarkButton item={{ id: item.slug, type: 'discussion', title: item.title, path: `/discussions/${item.slug}` }} /><DiscussOnGitHub url={item.githubDiscussionUrl} /></div></div></header><div className="container-shell section-pad grid gap-10 lg:grid-cols-[minmax(0,48rem)_18rem]"><div className="space-y-10"><TextSection title="Background" text={item.background} /><TextSection title="Why it matters" text={item.whyItMatters} /><ListSection title="Key discussion points" items={item.points} /><div className="grid gap-4 md:grid-cols-2"><Argument title="Arguments for" icon={<ThumbsUp />} items={item.argumentsFor} tone="for" /><Argument title="Arguments against" icon={<ThumbsDown />} items={item.argumentsAgainst} tone="against" /></div><ListSection title="Risks" items={item.risks} icon={<TriangleAlert className="text-amber-500" />} /><ListSection title="Engineering considerations" items={item.considerations} /><section><h2 className="title-md">Suggested architecture</h2><div className="mt-5 max-w-lg">{item.architecture.map((step, index) => <div key={step}><div className="panel p-4 text-center text-sm font-bold">{step}</div>{index < item.architecture.length - 1 && <ArrowDown className="mx-auto my-2 text-[var(--muted)]" size={16} />}</div>)}</div></section><div className="grid gap-4 sm:grid-cols-2"><ListSection title="Related tools" items={item.relatedTools} /><ListSection title="Further reading" items={item.furtherReading} /></div></div><aside className="lg:sticky lg:top-24 lg:self-start"><div className="panel p-5"><p className="eyebrow">Your position</p><p className="muted mt-2 text-sm leading-6">Stored only in this browser. No community totals are shown.</p><div className="mt-5 space-y-2">{([{ value: 'agree', label: 'Agree', icon: ThumbsUp }, { value: 'unsure', label: 'Unsure', icon: CircleHelp }, { value: 'disagree', label: 'Disagree', icon: ThumbsDown }] as const).map(({ value, label, icon: Icon }) => <button className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-bold ${position === value ? 'border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))]' : 'border-[var(--line)] bg-[var(--surface)]'}`} onClick={() => choose(value)} aria-pressed={position === value} key={value}><Icon size={17} />{label}{position === value && <Check className="ml-auto text-[var(--accent-dark)]" size={16} />}</button>)}</div></div></aside></div></main>
+}
+
+function TextSection({ title, text }: { title: string; text: string }) { return <section><h2 className="title-md">{title}</h2><p className="muted mt-4 leading-7">{text}</p></section> }
+function ListSection({ title, items, icon }: { title: string; items: string[]; icon?: React.ReactNode }) { return <section><h2 className="title-md flex items-center gap-2">{icon}{title}</h2><ul className="mt-4 space-y-3">{items.map(item => <li className="flex gap-3 text-sm leading-6" key={item}><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />{item}</li>)}</ul></section> }
+function Argument({ title, icon, items, tone }: { title: string; icon: React.ReactNode; items: string[]; tone: 'for' | 'against' }) { return <section className={`rounded-2xl border p-6 ${tone === 'for' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-rose-500/30 bg-rose-500/5'}`}><h2 className={`flex items-center gap-2 font-bold ${tone === 'for' ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>{icon}{title}</h2><ul className="mt-4 space-y-2">{items.map(item => <li className="text-sm leading-6" key={item}>• {item}</li>)}</ul></section> }

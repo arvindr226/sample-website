@@ -1,0 +1,22 @@
+import { Bookmark, Download, FileUp, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { PageShell } from '../components/PageShell'
+import { usePageMeta } from '../hooks/usePageMeta'
+import type { Bookmark as BookmarkType } from '../types/content'
+import { readBookmarks, STORAGE_KEYS, writeStorage } from '../utils/storage'
+
+function validBookmarks(value: unknown): value is BookmarkType[] {
+  return Array.isArray(value) && value.every(item => item && typeof item === 'object' && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.path === 'string' && ['blog', 'roadmap', 'discussion', 'tool', 'case-study'].includes(item.type))
+}
+
+export default function BookmarksPage() {
+  const [bookmarks, setBookmarks] = useState(readBookmarks)
+  const [message, setMessage] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  usePageMeta('Bookmarks', 'View, export, and import content bookmarks stored only in your browser.')
+  const remove = (id: string, type: BookmarkType['type']) => { const next = bookmarks.filter(item => !(item.id === id && item.type === type)); writeStorage(STORAGE_KEYS.bookmarks, next); setBookmarks(next) }
+  const exportJson = () => { const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), bookmarks }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'ai-devops-bookmarks.json'; anchor.click(); URL.revokeObjectURL(url) }
+  const importJson = async (file?: File) => { if (!file) return; try { const parsed = JSON.parse(await file.text()) as { bookmarks?: unknown; data?: unknown }; const candidate = parsed.bookmarks ?? parsed.data; if (!validBookmarks(candidate)) throw new Error('Invalid bookmark format'); const merged = [...bookmarks]; candidate.forEach(item => { if (!merged.some(existing => existing.id === item.id && existing.type === item.type)) merged.push({ ...item, savedAt: item.savedAt || new Date().toISOString() }) }); writeStorage(STORAGE_KEYS.bookmarks, merged); setBookmarks(merged); setMessage(`Imported ${merged.length - bookmarks.length} new bookmark(s).`) } catch { setMessage('Import failed. Choose a valid AI DevOps bookmark JSON file.') } finally { if (inputRef.current) inputRef.current.value = '' } }
+  return <PageShell eyebrow="Your local library" title="Bookmarks" description="Saved content stays in this browser. Export a portable JSON file before clearing site data or switching devices."><section className="container-shell section-pad"><div className="mb-8 flex flex-wrap gap-3"><button className="btn-secondary" onClick={exportJson} disabled={!bookmarks.length}><Download size={16} /> Export JSON</button><button className="btn-secondary" onClick={() => inputRef.current?.click()}><FileUp size={16} /> Import JSON</button><input ref={inputRef} className="sr-only" type="file" accept="application/json,.json" onChange={event => void importJson(event.target.files?.[0])} />{message && <p className="muted self-center text-sm" role="status">{message}</p>}</div>{bookmarks.length ? <div className="divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-[var(--surface)]">{bookmarks.sort((a, b) => b.savedAt.localeCompare(a.savedAt)).map(item => <article className="flex items-center gap-4 p-5" key={`${item.type}:${item.id}`}><Bookmark className="shrink-0 text-[var(--accent-dark)]" size={18} fill="currentColor" /><div className="min-w-0 flex-1"><span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{item.type.replace('-', ' ')}</span><h2 className="truncate font-bold"><Link to={item.path} className="hover:text-[var(--accent-dark)]">{item.title}</Link></h2></div><button className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--line)] bg-transparent text-[var(--muted)] hover:text-rose-500" onClick={() => remove(item.id, item.type)} aria-label={`Remove ${item.title} bookmark`}><Trash2 size={16} /></button></article>)}</div> : <div className="panel py-16 text-center"><Bookmark className="mx-auto text-[var(--muted)]" size={30} /><h2 className="mt-4 text-xl font-bold">Your reading queue is empty</h2><p className="muted mt-2">Bookmark a field note, roadmap topic, discussion, tool, or case study.</p><Link to="/blogs" className="btn-primary mt-6">Browse field notes</Link></div>}</section></PageShell>
+}
